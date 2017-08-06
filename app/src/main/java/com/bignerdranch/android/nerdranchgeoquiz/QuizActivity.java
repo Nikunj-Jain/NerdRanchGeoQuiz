@@ -1,7 +1,8 @@
 package com.bignerdranch.android.nerdranchgeoquiz;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.PersistableBundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -16,9 +17,11 @@ public class QuizActivity extends AppCompatActivity {
     public static final String KEY_INDEX = "index";
     public static final String KEY_ANSWERED = "hasAnswered";
     public static final String KEY_SCORE = "score";
+    private static final int REQUEST_CODE_CHEAT = 0;
 
     private Button mTrueButton;
     private Button mFalseButton;
+    private Button mCheatButton;
 
     private ImageButton mPreviousButton;
     private ImageButton mNextButton;
@@ -38,6 +41,7 @@ public class QuizActivity extends AppCompatActivity {
     private int mCurrentIndex = 0;
     private boolean mHasUserAnswered = false;
     private int mScore = 0;
+    private boolean mIsCheater;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +63,7 @@ public class QuizActivity extends AppCompatActivity {
         mFalseButton = (Button) findViewById(R.id.false_button);
         mNextButton = (ImageButton) findViewById(R.id.next_button);
         mPreviousButton = (ImageButton) findViewById(R.id.previous_button);
+        mCheatButton = (Button) findViewById(R.id.cheat_button);
 
         updateQuestion();
 
@@ -85,6 +90,7 @@ public class QuizActivity extends AppCompatActivity {
             public void onClick(View v) {
                 mCurrentIndex = (mCurrentIndex + 1) % mQuestionBank.length;
                 mHasUserAnswered = false;
+                mIsCheater = false;
                 updateQuestion();
             }
         });
@@ -98,6 +104,7 @@ public class QuizActivity extends AppCompatActivity {
                     mCurrentIndex -= 1;
                 }
                 mHasUserAnswered = false;
+                mIsCheater = false;
                 updateQuestion();
             }
         });
@@ -107,7 +114,17 @@ public class QuizActivity extends AppCompatActivity {
             public void onClick(View v) {
                 mCurrentIndex = (mCurrentIndex + 1) % mQuestionBank.length;
                 mHasUserAnswered = false;
+                mIsCheater = false;
                 updateQuestion();
+            }
+        });
+
+        mCheatButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
+                Intent intent = CheatActivity.newIntent(QuizActivity.this, answerIsTrue);
+                startActivityForResult(intent, REQUEST_CODE_CHEAT);
             }
         });
     }
@@ -150,6 +167,21 @@ public class QuizActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy() called");
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == REQUEST_CODE_CHEAT) {
+            if (data == null) {
+                return;
+            }
+            mIsCheater = CheatActivity.wasAnswerShown(data);
+        }
+    }
+
     private void updateQuestion() {
         if (mCurrentIndex == 0) {
             mScore = 0;
@@ -164,17 +196,21 @@ public class QuizActivity extends AppCompatActivity {
 
         int messageResId = 0;
 
-        if (userPressedTrue == answerIsTrue) {
-            messageResId = R.string.correct_toast;
-            mScore += 1;
+        if (mIsCheater) {
+            messageResId = R.string.judgement_toast;
         } else {
-            messageResId = R.string.incorrect_toast;
+            if (userPressedTrue == answerIsTrue) {
+                messageResId = R.string.correct_toast;
+                mScore += 1;
+            } else {
+                messageResId = R.string.incorrect_toast;
+            }
         }
 
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
 
         if (mCurrentIndex == mQuestionBank.length - 1) {
-            String scoreMessage = "You answered " + ((float)(mScore) / mCurrentIndex) * 100 + "% correctly.";
+            String scoreMessage = "You answered " + ((float)(mScore) / mQuestionBank.length) * 100 + "% correctly.";
             Toast.makeText(this, scoreMessage, Toast.LENGTH_SHORT).show();
         }
     }
