@@ -15,6 +15,7 @@ public class QuizActivity extends AppCompatActivity {
     private static final String TAG = "QuizActivity";
     public static final String KEY_INDEX = "index";
     public static final String KEY_ANSWERED = "hasAnswered";
+    public static final String KEY_SCORE = "score";
 
     private Button mTrueButton;
     private Button mFalseButton;
@@ -36,6 +37,7 @@ public class QuizActivity extends AppCompatActivity {
 
     private int mCurrentIndex = 0;
     private boolean mHasUserAnswered = false;
+    private int mScore = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +46,7 @@ public class QuizActivity extends AppCompatActivity {
         if (savedInstanceState != null) {
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
             mHasUserAnswered = savedInstanceState.getBoolean(KEY_ANSWERED, false);
+            mScore = savedInstanceState.getInt(KEY_SCORE);
         }
 
         Log.d(TAG, "onCreate(Bundle) called");
@@ -132,6 +135,7 @@ public class QuizActivity extends AppCompatActivity {
         super.onSaveInstanceState(savedInstanceState);
         savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
         savedInstanceState.putBoolean(KEY_ANSWERED, mHasUserAnswered);
+        savedInstanceState.putInt(KEY_SCORE, mScore);
     }
 
     @Override
@@ -147,6 +151,9 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void updateQuestion() {
+        if (mCurrentIndex == 0) {
+            mScore = 0;
+        }
         int question = mQuestionBank[mCurrentIndex].getTextResId();
         mQuestionTextView.setText(question);
         setButtonsState(!mHasUserAnswered);
@@ -159,11 +166,17 @@ public class QuizActivity extends AppCompatActivity {
 
         if (userPressedTrue == answerIsTrue) {
             messageResId = R.string.correct_toast;
+            mScore += 1;
         } else {
             messageResId = R.string.incorrect_toast;
         }
 
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
+
+        if (mCurrentIndex == mQuestionBank.length - 1) {
+            String scoreMessage = "You answered " + ((float)(mScore) / mCurrentIndex) * 100 + "% correctly.";
+            Toast.makeText(this, scoreMessage, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setButtonsState(boolean setEnabled) {
